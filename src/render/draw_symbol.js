@@ -18,7 +18,13 @@ import ONE_EM from '../symbol/one_em.js';
 import {evaluateVariableOffset} from '../symbol/symbol_layout.js';
 import Tile from '../source/tile.js';
 import { GlobeTile } from '../geo/projection/globe.js';
-import {mercatorZfromAltitude} from '../geo/mercator_coordinate.js';
+import {
+    mercatorZfromAltitude,
+    mercatorXfromLng,
+    mercatorYfromLat
+} from '../geo/mercator_coordinate.js';
+import {degToRad} from '../util/util.js';
+import {globeToMercatorTransition} from '../geo/projection/globe.js';
 
 import {
     symbolIconUniformValues,
@@ -346,11 +352,21 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
         const hasHalo = isSDF && layer.paint.get(isText ? 'text-halo-width' : 'icon-halo-width').constantOr(1) !== 0;
 
         let uniformValues;
+        const invRotMatrix = mat4.identity(new Float64Array(16));
+        mat4.rotateX(invRotMatrix, invRotMatrix, degToRad(-tr._center.lat));
+        mat4.rotateY(invRotMatrix, invRotMatrix, degToRad(-tr._center.lng));
+        mat4.invert(invRotMatrix, invRotMatrix);
+        const mercCenter = [
+            mercatorXfromLng(tr.center.lng),
+            mercatorYfromLat(tr.center.lat)
+        ];
         if (isSDF) {
             if (!bucket.iconsInText) {
                 uniformValues = symbolSDFUniformValues(sizeData.kind,
                 size, rotateInShader, pitchWithMap, painter, matrix,
-                uLabelPlaneMatrix, uglCoordMatrix, isText, texSize, true);
+                uLabelPlaneMatrix, uglCoordMatrix, isText, texSize, true,
+                [coord.canonical.x, coord.canonical.y, coord.canonical.z],
+                globeToMercatorTransition(tr.zoom), invRotMatrix, mercCenter);
             } else {
                 uniformValues = symbolTextAndIconUniformValues(sizeData.kind,
                 size, rotateInShader, pitchWithMap, painter, matrix,
@@ -359,7 +375,9 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
         } else {
             uniformValues = symbolIconUniformValues(sizeData.kind,
                 size, rotateInShader, pitchWithMap, painter, matrix,
-                uLabelPlaneMatrix, uglCoordMatrix, isText, texSize);
+                uLabelPlaneMatrix, uglCoordMatrix, isText, texSize,
+                [coord.canonical.x, coord.canonical.y, coord.canonical.z],
+                globeToMercatorTransition(tr.zoom), invRotMatrix, mercCenter);
         }
 
         const state = {

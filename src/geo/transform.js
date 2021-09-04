@@ -1725,6 +1725,8 @@ class Transform {
         // Z-axis uses pixel coordinates when globe mode is enabled
         const pixelsPerMeter = this.pixelsPerMeter;
 
+        this._projection.zoom = this.zoom;
+
         this._projectionScaler = pixelsPerMeter / (mercatorZfromAltitude(1, this.center.lat) * this.worldSize);
         //this._projectionScaler = mercatorZfromAltitude(1, 0) / mercatorZfromAltitude(1, this.center.lat);
         this.cameraToCenterDistance = 0.5 / Math.tan(halfFov) * this.height * this._projectionScaler;

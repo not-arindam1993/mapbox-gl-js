@@ -56,8 +56,7 @@ class GlobeTileTransform {
     }
 
     createTileMatrix(id: UnwrappedTileID): Float64Array {
-        const decode = denormalizeECEF(tileBoundsOnGlobe(id.canonical));
-        return mat4.multiply([], this._globeMatrix, decode);
+        return this._globeMatrix;
     }
 
     tileAabb(id: UnwrappedTileID, z: number, minZ: number, maxZ: number) {
@@ -184,17 +183,11 @@ export default {
 
     projectTilePoint(x: number, y: number, id: CanonicalTileID): {x:number, y: number, z:number} {
         const tiles = Math.pow(2.0, id.z);
-        //const mx = (p.x / 8192.0 + tiles / 2) / tiles;
-        const mx = (x / 8192.0 + id.x) / tiles;
-        const my = (y / 8192.0 + id.y) / tiles;
+        const mx = (x / EXTENT + id.x) / tiles;
+        const my = (y / EXTENT + id.y) / tiles;
         const lat = latFromMercatorY(my);
         const lng = lngFromMercatorX(mx);
         const pos = latLngToECEF(lat, lng);
-
-        // TODO: cached matrices!
-        const bounds = tileBoundsOnGlobe(id);
-        const normalizationMatrix = normalizeECEF(bounds);
-        vec3.transformMat4(pos, pos, normalizationMatrix);
 
         return {x: pos[0], y: pos[1], z: pos[2]};
     },
@@ -314,8 +307,8 @@ export function normalizeECEF(bounds: Aabb): Float64Array {
     return m;
 }
 
-export const GLOBE_ZOOM_THRESHOLD_MIN = 7;
-export const GLOBE_ZOOM_THRESHOLD_MAX = 8;
+export const GLOBE_ZOOM_THRESHOLD_MIN = 2;
+export const GLOBE_ZOOM_THRESHOLD_MAX = 3;
 
 export function globeToMercatorTransition(zoom: number): number {
     return smoothstep(GLOBE_ZOOM_THRESHOLD_MIN, GLOBE_ZOOM_THRESHOLD_MAX, zoom);
@@ -337,7 +330,7 @@ export function denormalizeECEF(bounds: Aabb): Float64Array {
     return m;
 }
 
-export const GLOBE_VERTEX_GRID_SIZE = 128;
+export const GLOBE_VERTEX_GRID_SIZE = 16;
 
 export class GlobeSharedBuffers {
     poleIndexBuffer: IndexBuffer;
