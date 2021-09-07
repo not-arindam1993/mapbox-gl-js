@@ -225,8 +225,6 @@ class WorkerTile {
                 for (const key in buckets) {
                     const bucket = buckets[key];
                     if (bucket instanceof SymbolBucket) {
-                        getProjection('mercator').zoom = this.zoom;
-                        getProjection('globe').zoom = this.zoom;
                         recalculateLayers(bucket.layers, this.zoom, availableImages);
                         performSymbolLayout(bucket,
                             glyphMap,
