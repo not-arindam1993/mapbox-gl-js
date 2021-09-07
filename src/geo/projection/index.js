@@ -25,7 +25,6 @@ export type TileTransform = {
 
 export type Projection = {
     name: string,
-    zoom: number;
     project: (lng: number, lat: number) => {x: number, y: number, z: number},
 
     projectTilePoint: (x: number, y: number, id: CanonicalTileID) => {x:number, y: number, z:number},
