@@ -360,13 +360,15 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
             mercatorXfromLng(tr.center.lng),
             mercatorYfromLat(tr.center.lat)
         ];
+        const globeToMercator = tr.projection.name === 'globe'
+            ? globeToMercatorTransition(tr.zoom) : 0.0;
         if (isSDF) {
             if (!bucket.iconsInText) {
                 uniformValues = symbolSDFUniformValues(sizeData.kind,
                 size, rotateInShader, pitchWithMap, painter, matrix,
                 uLabelPlaneMatrix, uglCoordMatrix, isText, texSize, true,
                 [coord.canonical.x, coord.canonical.y, coord.canonical.z],
-                globeToMercatorTransition(tr.zoom), invRotMatrix, mercCenter);
+                globeToMercator, invRotMatrix, mercCenter);
             } else {
                 uniformValues = symbolTextAndIconUniformValues(sizeData.kind,
                 size, rotateInShader, pitchWithMap, painter, matrix,
@@ -377,7 +379,7 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
                 size, rotateInShader, pitchWithMap, painter, matrix,
                 uLabelPlaneMatrix, uglCoordMatrix, isText, texSize,
                 [coord.canonical.x, coord.canonical.y, coord.canonical.z],
-                globeToMercatorTransition(tr.zoom), invRotMatrix, mercCenter);
+                globeToMercator, invRotMatrix, mercCenter);
         }
 
         const state = {
