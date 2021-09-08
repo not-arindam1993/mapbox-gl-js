@@ -56,7 +56,21 @@ class GlobeTileTransform {
     }
 
     createTileMatrix(id: UnwrappedTileID): Float64Array {
-        return this._globeMatrix;
+        const decode = denormalizeECEF(tileBoundsOnGlobe(id.canonical));
+        return mat4.multiply([], this._globeMatrix, decode);
+    }
+
+    createInversionMatrix(id: UnwrappedTileID): Float64Array {
+        const matrix = mat4.identity(new Float64Array(16));
+
+        mat4.rotateX(matrix, matrix, degToRad(-this._tr._center.lat));
+        mat4.rotateY(matrix, matrix, degToRad(-this._tr._center.lng));
+
+        const decode = denormalizeECEF(tileBoundsOnGlobe(id.canonical));
+
+        mat4.multiply(matrix, matrix, decode)
+
+        return mat4.invert(matrix, matrix);
     }
 
     tileAabb(id: UnwrappedTileID, z: number, minZ: number, maxZ: number) {
@@ -189,6 +203,11 @@ export default {
         const lng = lngFromMercatorX(mx);
         const pos = latLngToECEF(lat, lng);
 
+        // TODO: cached matrices!
+        const bounds = tileBoundsOnGlobe(id);
+        const normalizationMatrix = normalizeECEF(bounds);
+        vec3.transformMat4(pos, pos, normalizationMatrix);
+
         return {x: pos[0], y: pos[1], z: pos[2]};
     },
 
@@ -307,8 +326,8 @@ export function normalizeECEF(bounds: Aabb): Float64Array {
     return m;
 }
 
-export const GLOBE_ZOOM_THRESHOLD_MIN = 2;
-export const GLOBE_ZOOM_THRESHOLD_MAX = 3;
+export const GLOBE_ZOOM_THRESHOLD_MIN = 5;
+export const GLOBE_ZOOM_THRESHOLD_MAX = 6;
 
 export function globeToMercatorTransition(zoom: number): number {
     return smoothstep(GLOBE_ZOOM_THRESHOLD_MIN, GLOBE_ZOOM_THRESHOLD_MAX, zoom);
