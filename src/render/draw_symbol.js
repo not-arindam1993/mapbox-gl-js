@@ -271,15 +271,20 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
         mercatorYfromLat(tr.center.lat)
     ];
     const variablePlacement = layer.layout.get('text-variable-anchor');
-
+    const isGlobeProjection = tr.projection.name === 'globe';
+    const globeToMercator = isGlobeProjection ?
+        globeToMercatorTransition(tr.zoom) : 0.0;
     const tileRenderState: Array<SymbolTileRenderState> = [];
-    let defines = painter.terrain && pitchWithMap ? ['PITCH_WITH_MAP_TERRAIN'] : null;
 
+    let defines = [];
+    if (painter.terrain && pitchWithMap) {
+        defines.push('PITCH_WITH_MAP_TERRAIN');
+    }
+    if (isGlobeProjection) {
+        defines.push('PROJECTION_GLOBE_VIEW');
+    }
     if (alongLine) {
-        if (defines)
-            defines.push('PROJECTED_POS_ON_VIEWPORT');
-        else
-            defines = ['PROJECTED_POS_ON_VIEWPORT'];
+        defines.push('PROJECTED_POS_ON_VIEWPORT');
     }
 
     for (const coord of coords) {
@@ -357,8 +362,7 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
 
         let uniformValues;
         const invMatrix = tileTransform.createInversionMatrix(coord.toUnwrapped());
-        const globeToMercator = tr.projection.name === 'globe'
-            ? globeToMercatorTransition(tr.zoom) : 0.0;
+
         if (isSDF) {
             if (!bucket.iconsInText) {
                 uniformValues = symbolSDFUniformValues(sizeData.kind,
