@@ -68,8 +68,9 @@ class GlobeTileTransform {
 
         const decode = denormalizeECEF(tileBoundsOnGlobe(id.canonical));
 
-        mat4.multiply(matrix, matrix, decode)
+        mat4.multiply(matrix, matrix, decode);
 
+        // TODO: Optimize this function to prevent the inversion step
         return mat4.invert(matrix, matrix);
     }
 
