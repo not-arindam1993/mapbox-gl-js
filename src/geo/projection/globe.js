@@ -349,7 +349,7 @@ export function denormalizeECEF(bounds: Aabb): Float64Array {
     return m;
 }
 
-export const GLOBE_VERTEX_GRID_SIZE = 16;
+export const GLOBE_VERTEX_GRID_SIZE = 128;
 
 export class GlobeSharedBuffers {
     poleIndexBuffer: IndexBuffer;
