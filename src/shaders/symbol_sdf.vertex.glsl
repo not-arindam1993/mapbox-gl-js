@@ -135,9 +135,9 @@ void main() {
     gl_Position = mix(u_coord_matrix * vec4(projected_pos.xy / projected_pos.w + offset, z, 1.0), AWAY, float(projectedPoint.w <= 0.0 || occlusion_fade == 0.0));
     float gamma_scale = gl_Position.w;
 
-    float projection_transition_opacity = 1.0;
+    float projection_transition_fade = 1.0;
 #if defined(PROJECTED_POS_ON_VIEWPORT) && defined(PROJECTION_GLOBE_VIEW)
-    projection_transition_opacity = 1.0 - step(EPSILON, u_zoom_transition);
+    projection_transition_fade = 1.0 - step(EPSILON, u_zoom_transition);
 #endif
 
     vec2 fade_opacity = unpack_opacity(a_fade_opacity);
@@ -145,5 +145,5 @@ void main() {
     float interpolated_fade_opacity = max(0.0, min(occlusion_fade, fade_opacity[0] + fade_change));
 
     v_data0 = a_tex / u_texsize;
-    v_data1 = vec3(gamma_scale, size, interpolated_fade_opacity * projection_transition_opacity);
+    v_data1 = vec3(gamma_scale, size, interpolated_fade_opacity * projection_transition_fade);
 }
