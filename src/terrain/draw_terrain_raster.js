@@ -289,7 +289,7 @@ function drawTerrainForGlobe(painter: Painter, terrain: Terrain, sourceCache: So
     const skirt = skirtHeight(tr.zoom) * terrain.exaggeration();
     const globeMatrix = tr.calculateGlobeMatrix(tr.worldSize);
     const globeMercatorMatrix = tr.calculateGlobeMercatorMatrix(tr.worldSize);
-    const mercCenter = [mercatorXfromLng(tr.center.lng), mercatorYfromLat(tr.center.lat)];
+    const mercatorCenter = [mercatorXfromLng(tr.center.lng), mercatorYfromLat(tr.center.lat)];
     const batches = showWireframe ? [false, true] : [false];
 
     batches.forEach(isWireframe => {
@@ -305,7 +305,7 @@ function drawTerrainForGlobe(painter: Painter, terrain: Terrain, sourceCache: So
             const tile = sourceCache.getTile(coord);
             const tiles = Math.pow(2, coord.canonical.z);
 
-            prepareBuffersForTileMesh(painter, tile, coord, tiles, tiles);
+            prepareBuffersForTileMesh(painter, tile, coord, tiles);
 
             const stencilMode = StencilMode.disabled;
 
@@ -335,11 +335,7 @@ function drawTerrainForGlobe(painter: Painter, terrain: Terrain, sourceCache: So
             const uniformValues = globeRasterUniformValues(
                 tr.projMatrix, posMatrix, globeMercatorMatrix,
                 globeToMercatorTransition(tr.zoom),
-                mercCenter, upvectorMatrix);
-
-            const tileT = tr.projection.createTileTransform(tr, tr.worldSize);
-            const a = tileT.upVectorScale(coord.canonical);
-            const b = tileT.tileSpaceUpVectorScale();
+                mercatorCenter, upvectorMatrix);
 
             setShaderMode(shaderMode, isWireframe);
 
@@ -358,7 +354,7 @@ function drawTerrainForGlobe(painter: Painter, terrain: Terrain, sourceCache: So
 
                 const poleUniforms = globeRasterUniformValues(
                     tr.projMatrix, poleMatrix, poleMatrix,
-                    0.0, mercCenter, upvectorMatrix);
+                    0.0, mercatorCenter, upvectorMatrix);
 
                 program.draw(context, primitive, depthMode, stencilMode, colorMode, CullFaceMode.backCCW,
                     poleUniforms, "globe_pole_raster", tile.globePoleBuffer, painter.globeSharedBuffers.poleIndexBuffer, painter.globeSharedBuffers.poleSegments);
@@ -453,7 +449,7 @@ function drawTerrainDepth(painter: Painter, terrain: Terrain, sourceCache: Sourc
         const depthMode = new DepthMode(gl.LESS, DepthMode.ReadWrite, painter.depthRangeFor3D);
         const globeMercatorMatrix = tr.calculateGlobeMercatorMatrix(tr.worldSize);
         const globeMatrix = tr.calculateGlobeMatrix(tr.worldSize);
-        const mercCenter = [mercatorXfromLng(tr.center.lng), mercatorYfromLat(tr.center.lat)];
+        const mercatorCenter = [mercatorXfromLng(tr.center.lng), mercatorYfromLat(tr.center.lat)];
 
         for (const coord of tileIDs) {
             const tile = sourceCache.getTile(coord);
@@ -468,7 +464,7 @@ function drawTerrainDepth(painter: Painter, terrain: Terrain, sourceCache: Sourc
             const posMatrix = globeMatrixForTile(coord.canonical, globeMatrix);
             const uniformValues = globeRasterUniformValues(
                 tr.projMatrix, posMatrix, globeMercatorMatrix,
-                globeToMercatorTransition(tr.zoom), mercCenter,
+                globeToMercatorTransition(tr.zoom), mercatorCenter,
                 globeUpVectorMatrix(coord.canonical, tiles));
 
             program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, ColorMode.unblended, CullFaceMode.backCCW,
