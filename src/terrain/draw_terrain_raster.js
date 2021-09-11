@@ -204,7 +204,7 @@ function createPoleTriangleVertices(fanSize, tiles, ws, topCap) {
     return arr;
 }
 
-function prepareBuffersForTileMesh(painter: Painter, tile: Tile, coord: OverscaledTileID) {
+function prepareBuffersForTileMesh(painter: Painter, tile: Tile, coord: OverscaledTileID, tiles: number) {
     const context = painter.context;
     const id = coord.canonical;
     const tr = painter.transform;
@@ -213,7 +213,6 @@ function prepareBuffersForTileMesh(painter: Painter, tile: Tile, coord: Overscal
         tile.globeGridBuffer = context.createVertexBuffer(gridMesh, globeLayoutAttributes, false);
     }
 
-    const tiles = Math.pow(2, coord.canonical.z);
     if (!tile.globePoleBuffer && (coord.canonical.y === 0 || coord.canonical.y === tiles - 1)) {
         const poleMesh = createPoleTriangleVertices(GLOBE_VERTEX_GRID_SIZE, tiles, tr.tileSize * tiles, coord.canonical.y === 0);
         tile.globePoleBuffer = context.createVertexBuffer(poleMesh, globeLayoutAttributes, false);
@@ -232,6 +231,16 @@ function globeMatrixForTile(id: CanonicalTileID, globeMatrix) {
     mat4.mul(posMatrix, posMatrix, decode);
 
     return posMatrix;
+}
+
+function globeUpVectorMatrix(id: CanonicalTileID, tiles: number) {
+    // Tile up vectors and can be reused for each tiles on the same x-row.
+    // i.e. for each tile id (x, y, z) use pregenerated mesh of (0, y, z).
+    // For this reason the up vectors are rotated first by 'yRotation' to
+    // place them in the correct longitude location.
+    const xOffset = id.x - tiles / 2;
+    const yRotation = xOffset / tiles * Math.PI * 2.0;
+    return mat4.fromYRotation([], yRotation);
 }
 
 function poleMatrixForTile(id: CanonicalTileID, tr) {
@@ -294,7 +303,9 @@ function drawTerrainForGlobe(painter: Painter, terrain: Terrain, sourceCache: So
 
         for (const coord of tileIDs) {
             const tile = sourceCache.getTile(coord);
-            prepareBuffersForTileMesh(painter, tile, coord);
+            const tiles = Math.pow(2, coord.canonical.z);
+
+            prepareBuffersForTileMesh(painter, tile, coord, tiles, tiles);
 
             const stencilMode = StencilMode.disabled;
 
@@ -319,16 +330,20 @@ function drawTerrainForGlobe(painter: Painter, terrain: Terrain, sourceCache: So
             }
 
             const posMatrix = globeMatrixForTile(coord.canonical, globeMatrix);
+            const upvectorMatrix = globeUpVectorMatrix(coord.canonical, tiles);
 
-            const tiles = Math.pow(2, coord.canonical.z);
             const uniformValues = globeRasterUniformValues(
                 tr.projMatrix, posMatrix, globeMercatorMatrix,
                 globeToMercatorTransition(tr.zoom),
-                mercCenter);
+                mercCenter, upvectorMatrix);
+
+            const tileT = tr.projection.createTileTransform(tr, tr.worldSize);
+            const a = tileT.upVectorScale(coord.canonical);
+            const b = tileT.tileSpaceUpVectorScale();
 
             setShaderMode(shaderMode, isWireframe);
 
-            const gridTileId = new CanonicalTileID(coord.canonical.z, Math.pow(2, coord.canonical.z) / 2, coord.canonical.y);
+            const gridTileId = new CanonicalTileID(coord.canonical.z, tiles / 2, coord.canonical.y);
             elevationOptions = extend(elevationOptions, { elevationTileID: gridTileId });
             terrain.setupElevationDraw(tile, program, elevationOptions);
 
@@ -343,7 +358,7 @@ function drawTerrainForGlobe(painter: Painter, terrain: Terrain, sourceCache: So
 
                 const poleUniforms = globeRasterUniformValues(
                     tr.projMatrix, poleMatrix, poleMatrix,
-                    0.0, mercCenter);
+                    0.0, mercCenter, upvectorMatrix);
 
                 program.draw(context, primitive, depthMode, stencilMode, colorMode, CullFaceMode.backCCW,
                     poleUniforms, "globe_pole_raster", tile.globePoleBuffer, painter.globeSharedBuffers.poleIndexBuffer, painter.globeSharedBuffers.poleSegments);
@@ -442,16 +457,19 @@ function drawTerrainDepth(painter: Painter, terrain: Terrain, sourceCache: Sourc
 
         for (const coord of tileIDs) {
             const tile = sourceCache.getTile(coord);
-            prepareBuffersForTileMesh(painter, tile, coord);
+            const tiles = Math.pow(2, coord.canonical.z);
 
-            const gridTileId = new CanonicalTileID(coord.canonical.z, Math.pow(2, coord.canonical.z) / 2, coord.canonical.y);
+            prepareBuffersForTileMesh(painter, tile, coord, tiles);
+
+            const gridTileId = new CanonicalTileID(coord.canonical.z, tiles / 2, coord.canonical.y);
             const elevationOptions = { elevationTileID: gridTileId };
             terrain.setupElevationDraw(tile, program, elevationOptions);
 
             const posMatrix = globeMatrixForTile(coord.canonical, globeMatrix);
             const uniformValues = globeRasterUniformValues(
                 tr.projMatrix, posMatrix, globeMercatorMatrix,
-                globeToMercatorTransition(tr.zoom), mercCenter);
+                globeToMercatorTransition(tr.zoom), mercCenter,
+                globeUpVectorMatrix(coord.canonical, tiles));
 
             program.draw(context, gl.TRIANGLES, depthMode, StencilMode.disabled, ColorMode.unblended, CullFaceMode.backCCW,
                 uniformValues, "globe_raster_depth", tile.globeGridBuffer, painter.globeSharedBuffers.gridIndexBuffer, painter.globeSharedBuffers.gridSegments, null, null, null, null);
